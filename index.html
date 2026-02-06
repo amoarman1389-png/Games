@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mini Games | Tic Tac Toe</title>
+
+<!-- Alex Brush Font -->
+<link href="https://fonts.googleapis.com/css2?family=Alex+Brush&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --bg: #0b0f14;
+  --panel: #111827;
+  --ice: #7dd3fc;
+  --ice-soft: #bae6fd;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Segoe UI", sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* ===== Loading ===== */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.spinner {
+  width: 70px;
+  height: 70px;
+  border: 6px solid #222;
+  border-top: 6px solid var(--ice);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Code Arman text */
+.brand {
+  position: absolute;
+  bottom: 40px;
+  font-family: 'Alex Brush', cursive;
+  font-size: 34px;
+  color: white;
+  opacity: 0;
+  animation: fadeBrand 2s ease-in-out infinite;
+}
+
+@keyframes fadeBrand {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ===== App ===== */
+.app {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  display: none;
+}
+
+/* ===== Header ===== */
+header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  color: var(--ice);
+  margin-bottom: 15px;
+}
+
+header svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* ===== Buttons ===== */
+button {
+  width: 100%;
+  padding: 14px;
+  margin: 8px 0;
+  background: var(--panel);
+  border: 1px solid var(--ice);
+  color: var(--ice);
+  font-size: 16px;
+  border-radius: 10px;
+}
+
+/* ===== Small Back Button ===== */
+#backBtn {
+  width: auto;
+  padding: 6px 14px;
+  font-size: 14px;
+  margin-bottom: 8px;
+  background: transparent;
+  border: 1px solid var(--ice);
+}
+
+/* ===== Score ===== */
+.score {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 10px;
+  color: var(--ice-soft);
+}
+
+/* ===== Board ===== */
+.board {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.cell {
+  background: #020617;
+  border: 2px solid var(--ice);
+  border-radius: 12px;
+  aspect-ratio: 1 / 1;
+  font-size: 2.5rem;
+  color: var(--ice);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+/* ===== Status ===== */
+#status {
+  margin-top: 15px;
+  color: var(--ice);
+  font-size: 18px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="brand">Code Arman</div>
+</div>
+
+<div class="app" id="app">
+
+<header>
+<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16">
+  <path d="M11.5 6.027a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m-1.5 1.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m2.5-.5a.5.5 0 1 1-1 0 .5.5 0 0 1 1 0m-1.5 1.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1m-6.5-3h1v1h1v1h-1v1h-1v-1h-1v-1h1z"/>
+</svg>
+<h2>Mini Games</h2>
+</header>
+
+<div id="modeSelect">
+  <button onclick="startGame('pvp')">Player vs Player</button>
+  <button onclick="startGame('ai')">Player vs AI</button>
+</div>
+
+<div id="game" style="display:none">
+  <button id="backBtn" onclick="goBack()">← Back</button>
+
+  <div class="score">
+    <div>X: <span id="scoreX">0</span></div>
+    <div>O: <span id="scoreO">0</span></div>
+  </div>
+
+  <div class="board" id="board"></div>
+  <div id="status"></div>
+</div>
+
+</div>
+
+<script>
+setTimeout(() => {
+  loading.style.display = "none";
+  app.style.display = "block";
+}, 2000);
+
+/* ===== Sound + Vibration ===== */
+let audioCtx;
+function initAudio(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+function vibrate(ms){ if(navigator.vibrate) navigator.vibrate(ms); }
+function playSound(type){
+  if(!audioCtx) return;
+  const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+  o.connect(g); g.connect(audioCtx.destination);
+  if(type==="click"){o.frequency.value=600;g.gain.value=.05;vibrate(30);o.start();o.stop(audioCtx.currentTime+.08);}
+  if(type==="win"){o.frequency.setValueAtTime(400,audioCtx.currentTime);o.frequency.exponentialRampToValueAtTime(900,audioCtx.currentTime+.3);g.gain.value=.08;vibrate([100,50,100]);o.start();o.stop(audioCtx.currentTime+.4);}
+  if(type==="draw"){o.frequency.value=200;g.gain.value=.06;vibrate(80);o.start();o.stop(audioCtx.currentTime+.25);}
+}
+
+/* ===== Game Logic ===== */
+let board, currentPlayer, mode, scoreX=0, scoreO=0;
+const winPatterns=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+function startGame(m){
+  mode = m;
+  modeSelect.style.display = "none";
+  game.style.display = "block";
+  resetBoard();
+}
+
+function goBack(){
+  modeSelect.style.display = "block";
+  game.style.display = "none";
+  status.textContent = "";
+
+  // ریست امتیازها
+  scoreX = 0;
+  scoreO = 0;
+  scoreXEl.textContent = scoreX;
+  scoreOEl.textContent = scoreO;
+
+  // ریست صفحه بازی
+  resetBoard();
+}
+
+function resetBoard(){
+  board = Array(9).fill(null);
+  currentPlayer = "X";
+  boardEl.innerHTML = "";
+  status.textContent = "X Turn";
+
+  board.forEach((_, i)=>{
+    const c = document.createElement("div");
+    c.className = "cell";
+    c.onclick = () => handleMove(i);
+    boardEl.appendChild(c);
+  });
+}
+
+function handleMove(i){
+  if(board[i]) return;
+  initAudio();
+  playSound("click");
+
+  board[i] = currentPlayer;
+  boardEl.children[i].textContent = currentPlayer;
+
+  if(checkWin(currentPlayer)){
+    playSound("win");
+    status.textContent = currentPlayer + " Wins!";
+    updateScore(currentPlayer);
+    setTimeout(resetBoard, 1200);
+    return;
+  }
+
+  if(!board.includes(null)){
+    playSound("draw");
+    status.textContent = "Draw!";
+    setTimeout(resetBoard, 1200);
+    return;
+  }
+
+  currentPlayer = currentPlayer==="X" ? "O" : "X";
+  status.textContent = currentPlayer + " Turn";
+
+  if(mode==="ai" && currentPlayer==="O") setTimeout(aiMove, 400);
+}
+
+function updateScore(p){
+  if(p==="X") scoreX++;
+  else scoreO++;
+  scoreXEl.textContent = scoreX;
+  scoreOEl.textContent = scoreO;
+}
+
+function checkWin(p){
+  return winPatterns.some(w => w.every(i => board[i]===p));
+}
+
+function aiMove(){
+  let best=-Infinity, move;
+  board.forEach((v,i)=>{
+    if(!v){
+      board[i]="O";
+      let s = minimax(0,false);
+      board[i]=null;
+      if(s>best){best=s; move=i;}
+    }
+  });
+  handleMove(move);
+}
+
+function minimax(d, m){
+  if(checkWin("O")) return 10-d;
+  if(checkWin("X")) return d-10;
+  if(!board.includes(null)) return 0;
+
+  let best = m ? -Infinity : Infinity;
+  board.forEach((v,i)=>{
+    if(!v){
+      board[i] = m ? "O" : "X";
+      best = m ? Math.max(best, minimax(d+1,false)) : Math.min(best, minimax(d+1,true));
+      board[i] = null;
+    }
+  });
+  return best;
+}
+
+const boardEl = document.getElementById("board"),
+      status = document.getElementById("status"),
+      scoreXEl = document.getElementById("scoreX"),
+      scoreOEl = document.getElementById("scoreO");
+</script>
+
+</body>
+</html>
